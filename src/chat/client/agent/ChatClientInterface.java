@@ -1,5 +1,7 @@
 package chat.client.agent;
 
+import android.content.ContentResolver;
+
 /**
  * This interface implements the logic of the chat client running on the user
  * terminal.
@@ -9,5 +11,5 @@ package chat.client.agent;
 
 public interface ChatClientInterface {
 	public void handleSpoken(String s);
-	public String[] getParticipantNames();
+	public String[] getParticipantNames(ContentResolver cr);
 }

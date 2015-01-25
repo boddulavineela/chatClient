@@ -23,6 +23,7 @@ Boston, MA  02111-1307, USA.
 
 package chat.client.gui;
 
+import java.util.ArrayList;
 import java.util.logging.Level;
 
 import chat.client.agent.ChatClientInterface;
@@ -32,15 +33,19 @@ import jade.wrapper.ControllerException;
 import jade.wrapper.StaleProxyException;
 import android.app.ListActivity;
 import android.content.BroadcastReceiver;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.database.Cursor;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+import android.provider.ContactsContract;
+import android.widget.Toast;
 
 /**
  * This activity implement the participants interface.
@@ -86,17 +91,23 @@ public class ParticipantsActivity extends ListActivity {
 		setContentView(R.layout.participants);
 
 		setListAdapter(new ArrayAdapter<String>(this, R.layout.participant,
-				chatClientInterface.getParticipantNames()));
+				chatClientInterface.getParticipantNames(getContentResolver())));
 
 		ListView listView = getListView();
 		listView.setTextFilterEnabled(true);
 		listView.setOnItemClickListener(listViewtListener);
 	}
 
-	private OnItemClickListener listViewtListener = new OnItemClickListener() {
+    private OnItemClickListener listViewtListener = new OnItemClickListener() {
 		public void onItemClick(AdapterView<?> parent, View view, int position,
 				long id) {
 			// TODO: A partecipant was picked. Send a private message.
+
+            // TODO for CSC750:
+            // 1. getParticipantnames
+            // 2. Check if in contacts [N]
+            // 3. A popup to confirm add to contacts
+            // 4. add to contacts!
 			finish();
 		}
 	};
@@ -118,7 +129,7 @@ public class ParticipantsActivity extends ListActivity {
 			if (action.equalsIgnoreCase("jade.demo.chat.REFRESH_PARTICIPANTS")) {
 				setListAdapter(new ArrayAdapter<String>(
 						ParticipantsActivity.this, R.layout.participant,
-						chatClientInterface.getParticipantNames()));
+						chatClientInterface.getParticipantNames(getContentResolver())));
 			}
 		}
 	}
