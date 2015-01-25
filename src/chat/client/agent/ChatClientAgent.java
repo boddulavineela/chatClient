@@ -23,9 +23,11 @@ Boston, MA  02111-1307, USA.
 
 package chat.client.agent;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 
+import chat.client.gui.R;
 import jade.content.ContentManager;
 import jade.content.Predicate;
 import jade.content.lang.Codec;
@@ -33,6 +35,7 @@ import jade.content.lang.sl.SLCodec;
 import jade.content.onto.Ontology;
 import jade.core.AID;
 import jade.core.Agent;
+import jade.core.MicroRuntime;
 import jade.core.behaviours.CyclicBehaviour;
 import jade.core.behaviours.OneShotBehaviour;
 import jade.lang.acl.ACLMessage;
@@ -44,8 +47,19 @@ import jade.util.leap.SortedSetImpl;
 import chat.ontology.ChatOntology;
 import chat.ontology.Joined;
 import chat.ontology.Left;
+import jade.wrapper.ControllerException;
+import jade.wrapper.StaleProxyException;
+
+import android.content.ContentResolver;
 import android.content.Intent;
 import android.content.Context;
+import android.content.IntentFilter;
+import android.database.Cursor;
+import android.os.Bundle;
+import android.provider.ContactsContract;
+import android.view.View;
+import android.widget.Button;
+import android.widget.TextView;
 
 /**
  * This agent implements the logic of the chat client running on the user
@@ -123,7 +137,15 @@ public class ChatClientAgent extends Agent implements ChatClientInterface {
 		logger.log(Level.INFO, "Sending broadcast " + broadcast.getAction());
 		context.sendBroadcast(broadcast);
 	}
-	
+
+    private void notifyEntry(String speaker, String sentence) {
+        Intent broadcast = new Intent();
+        broadcast.setAction("jade.demo.chat.REFRESH_CHAT");
+        broadcast.putExtra("sentence", sentence + speaker + " with a round of applause! " + "\n");
+        logger.log(Level.INFO, "Sending broadcast " + broadcast.getAction());
+        context.sendBroadcast(broadcast);
+    }
+
 	/**
 	 * Inner class ParticipantsManager. This behaviour registers as a chat
 	 * participant and keeps the list of participants up to date by managing the
@@ -150,9 +172,15 @@ public class ChatClientAgent extends Agent implements ChatClientInterface {
 			// Initialize the template used to receive notifications
 			// from the ChatManagerAgent
 			template = MessageTemplate.MatchConversationId(convId);
+
+            notifyEntry(myAgent.getLocalName(), "Please Welcome ");
+
+            //View rootView = inflater.inflate(R.layout.fragment_main, container, false);
+            // final TextView chatField = (TextView) findViewById(R.id.chatTextView);
+            // chatField.append("Trust yourself Anand!!");
 		}
 
-		public void action() {
+        public void action() {
 			// Receives information about people joining and leaving
 			// the chat from the ChatManager agent
 			ACLMessage msg = myAgent.receive(template);
@@ -250,18 +278,38 @@ public class ChatClientAgent extends Agent implements ChatClientInterface {
 		addBehaviour(new ChatSpeaker(this, s));
 	}
 	
-	public String[] getParticipantNames() {
+	public String[] getParticipantNames(ContentResolver cr) {
+        ArrayList<String> contactsList = GetContacts(cr);
 		String[] pp = new String[participants.size()];
 		Iterator it = participants.iterator();
 		int i = 0;
 		while (it.hasNext()) {
 			AID id = (AID) it.next();
-			pp[i++] = id.getLocalName();
+            String appendYorN;
+            appendYorN = contactsList.contains(id.getLocalName()) ? " [Y]" : " [N]";
+			pp[i++] = id.getLocalName() + appendYorN;
 		}
 		return pp;
 	}
 
-	// ///////////////////////////////////////
+    // source:
+    // http://developer.android.com/reference/android/content/ContentResolver.html
+    // http://saigeethamn.blogspot.in/2011/05/contacts-api-20-and-above-android.html
+    private ArrayList GetContacts(ContentResolver cr) {
+        ArrayList<String> contactsList = new ArrayList<String>();
+
+        Cursor cur = cr.query(ContactsContract.Contacts.CONTENT_URI,
+                null, null, null, null);
+        if (cur.getCount() > 0) {
+            while (cur.moveToNext()) {
+                String name = cur.getString(cur.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME));
+                contactsList.add(name);
+            }
+        }
+        return contactsList;
+    }
+
+    // ///////////////////////////////////////
 	// Private utility method
 	// ///////////////////////////////////////
 	private void handleUnexpected(ACLMessage msg) {
