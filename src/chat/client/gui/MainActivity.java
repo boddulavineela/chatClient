@@ -127,7 +127,8 @@ public class MainActivity extends Activity {
 	private OnClickListener buttonChatListener = new OnClickListener() {
 		public void onClick(View v) {
 			final EditText nameField = (EditText) findViewById(R.id.edit_nickname);
-			nickname = nameField.getText().toString();
+			nickname = nameField.getText().toString().trim();
+
 			if (!checkName(nickname)) {
 				logger.log(Level.INFO, "Invalid nickname!");
 				myHandler.postError(getString(R.string.msg_nickname_not_valid));

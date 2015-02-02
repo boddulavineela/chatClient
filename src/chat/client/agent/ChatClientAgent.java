@@ -89,6 +89,7 @@ public class ChatClientAgent extends Agent implements ChatClientInterface {
 
 	private Context context;
 
+    private boolean isFirstLoad = true;
 	protected void setup() {
 		Object[] args = getArguments();
 		if (args != null && args.length > 0) {
@@ -118,7 +119,7 @@ public class ChatClientAgent extends Agent implements ChatClientInterface {
 		broadcast.setAction("jade.demo.chat.SHOW_CHAT");
 		logger.log(Level.INFO, "Sending broadcast " + broadcast.getAction());
 		context.sendBroadcast(broadcast);
-	}
+    }
 
 	protected void takeDown() {
 	}
@@ -141,11 +142,18 @@ public class ChatClientAgent extends Agent implements ChatClientInterface {
     private void notifyEntry(String speaker, String sentence) {
         Intent broadcast = new Intent();
         broadcast.setAction("jade.demo.chat.REFRESH_CHAT");
-        broadcast.putExtra("sentence", sentence + speaker + " with a round of applause! " + "\n");
+        broadcast.putExtra("sentence", sentence + speaker + " joined the chat" + "\n");
         logger.log(Level.INFO, "Sending broadcast " + broadcast.getAction());
         context.sendBroadcast(broadcast);
     }
 
+    private void notifyExit(String speaker, String sentence) {
+        Intent broadcast = new Intent();
+        broadcast.setAction("jade.demo.chat.REFRESH_CHAT");
+        broadcast.putExtra("sentence", speaker + " left the chat" + "\n");
+        logger.log(Level.INFO, "Sending broadcast " + broadcast.getAction());
+        context.sendBroadcast(broadcast);
+    }
 	/**
 	 * Inner class ParticipantsManager. This behaviour registers as a chat
 	 * participant and keeps the list of participants up to date by managing the
@@ -172,13 +180,7 @@ public class ChatClientAgent extends Agent implements ChatClientInterface {
 			// Initialize the template used to receive notifications
 			// from the ChatManagerAgent
 			template = MessageTemplate.MatchConversationId(convId);
-
-            notifyEntry(myAgent.getLocalName(), "Please Welcome ");
-
-            //View rootView = inflater.inflate(R.layout.fragment_main, container, false);
-            // final TextView chatField = (TextView) findViewById(R.id.chatTextView);
-            // chatField.append("Trust yourself Anand!!");
-		}
+        }
 
         public void action() {
 			// Receives information about people joining and leaving
@@ -190,15 +192,24 @@ public class ChatClientAgent extends Agent implements ChatClientInterface {
 						Predicate p = (Predicate) myAgent.getContentManager().extractContent(msg);
 						if(p instanceof Joined) {
 							Joined joined = (Joined) p;
+                            if (isFirstLoad) {
+                                isFirstLoad = false;
+                                notifyEntry("You", "");
+                            }
+                            else {
+                                notifyEntry(joined.getWho().get(0).getLocalName(), "");
+                            }
 							List<AID> aid = (List<AID>) joined.getWho();
-							for(AID a : aid)
-								participants.add(a);
+							for(AID a : aid) {
+                                participants.add(a);
+                            }
 							notifyParticipantsChanged();
 						}
 						if(p instanceof Left) {
 							Left left = (Left) p;
 							List<AID> aid = (List<AID>) left.getWho();
-							for(AID a : aid)
+                            notifyExit(left.getWho().get(0).getLocalName(), "");
+                            for(AID a : aid)
 								participants.remove(a);
 							notifyParticipantsChanged();
 						}
@@ -233,13 +244,14 @@ public class ChatClientAgent extends Agent implements ChatClientInterface {
 			ACLMessage msg = myAgent.receive(template);
 			if (msg != null) {
 				if (msg.getPerformative() == ACLMessage.INFORM) {
-					notifySpoken(msg.getSender().getLocalName(),
-							msg.getContent());
+                    notifySpoken(msg.getSender().getLocalName(),
+                            msg.getContent());
 				} else {
 					handleUnexpected(msg);
 				}
 			} else {
 				block();
+                // may be here for other participants.
 			}
 		}
 	} // END of inner class ChatListener
@@ -264,7 +276,7 @@ public class ChatClientAgent extends Agent implements ChatClientInterface {
 				spokenMsg.addReceiver((AID) it.next());
 			}
 			spokenMsg.setContent(sentence);
-			notifySpoken(myAgent.getLocalName(), sentence);
+            notifySpoken(myAgent.getLocalName(), sentence);
 			send(spokenMsg);
 		}
 	} // END of inner class ChatSpeaker

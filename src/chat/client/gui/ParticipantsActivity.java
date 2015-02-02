@@ -31,13 +31,20 @@ import jade.core.MicroRuntime;
 import jade.util.Logger;
 import jade.wrapper.ControllerException;
 import jade.wrapper.StaleProxyException;
+
+import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.ListActivity;
 import android.content.BroadcastReceiver;
+import android.content.ContentProviderOperation;
 import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.database.Cursor;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.AdapterView;
@@ -103,14 +110,80 @@ public class ParticipantsActivity extends ListActivity {
 				long id) {
 			// TODO: A partecipant was picked. Send a private message.
 
+            final String participant = chatClientInterface.getParticipantNames(getContentResolver())[position];
+
+            if (participant.charAt(participant.length()-2) == 'N') {
+                new AlertDialog.Builder(ParticipantsActivity.this)
+                        .setTitle("Create Contact")
+                        .setMessage("Create contact for " + participant.substring(0, participant.length() - 4) + " ?")
+                        .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog, int which) {
+                                // continue
+                                addContact(participant.substring(0, participant.length() - 4));
+
+                                Context context = getApplicationContext();
+                                CharSequence text = "Contact created!";
+                                int duration = Toast.LENGTH_SHORT;
+
+                                Toast toast = Toast.makeText(context, text, duration);
+                                toast.show();
+
+                                finish();
+                            }
+                        })
+                        .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog, int which) {
+                                // do nothing
+                                finish();
+                            }
+                        })
+                        .setIcon(android.R.drawable.ic_dialog_alert)
+                        .show();
+
+
+            }
+            else {
+                finish();
+            }
             // TODO for CSC750:
             // 1. getParticipantnames
             // 2. Check if in contacts [N]
             // 3. A popup to confirm add to contacts
             // 4. add to contacts!
-			finish();
 		}
 	};
+
+    private void addContact(String participant) {
+        String DisplayName = participant;
+
+        ArrayList <ContentProviderOperation> ops = new ArrayList < ContentProviderOperation > ();
+
+        ops.add(ContentProviderOperation.newInsert(
+                ContactsContract.RawContacts.CONTENT_URI)
+                .withValue(ContactsContract.RawContacts.ACCOUNT_TYPE, null)
+                .withValue(ContactsContract.RawContacts.ACCOUNT_NAME, null)
+                .build());
+
+        //------------------------------------------------------ Names
+        if (DisplayName != null) {
+            ops.add(ContentProviderOperation.newInsert(
+                    ContactsContract.Data.CONTENT_URI)
+                    .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
+                    .withValue(ContactsContract.Data.MIMETYPE,
+                            ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE)
+                    .withValue(
+                            ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME,
+                            DisplayName).build());
+        }
+
+        // Asking the Contact provider to create a new contact
+        try {
+            getContentResolver().applyBatch(ContactsContract.AUTHORITY, ops);
+        } catch (Exception e) {
+            e.printStackTrace();
+            // Toast.makeText(myContext, "Exception: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
 
 	@Override
 	protected void onDestroy() {

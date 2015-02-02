@@ -97,7 +97,7 @@ public class ChatActivity extends Activity {
 
 		Button button = (Button) findViewById(R.id.button_send);
 		button.setOnClickListener(buttonSendListener);
-	}
+    }
 
 	@Override
 	protected void onDestroy() {
